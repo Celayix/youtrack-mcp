@@ -1,6 +1,5 @@
 import requests
 
-# Replace with your YouTrack Cloud domain (no trailing slash)
 BASE_URL = "https://celayix.myjetbrains.com/youtrack/api/issues"
 
 headers = {
@@ -8,28 +7,42 @@ headers = {
     "Accept": "application/json"
 }
 
-def get_issue_details(issue_id: str):
+def get_issue_with_attachments(issue_id: str):
     """
-    Retrieve issue title and description for a given issue ID.
+    Fetch issue title, description, and attachments (e.g. images).
     """
     url = f"{BASE_URL}/{issue_id}"
     params = {
-        "fields": "idReadable,summary,description"
+        "fields": "idReadable,summary,description,attachments(name,url,mimeType)"
     }
-    response = requests.get(url, headers=headers, params=params)
+    resp = requests.get(url, headers=headers, params=params)
 
-    if response.status_code == 200:
-        issue = response.json()
-        return {
-            "id": issue.get("idReadable"),
-            "title": issue.get("summary"),
-            "description": issue.get("description")
+    if resp.status_code != 200:
+        raise Exception(f"Error {resp.status_code}: {resp.text}")
+
+    issue = resp.json()
+    attachments = [
+        {
+            "name": a["name"],
+            "url": a["url"],
+            "mimeType": a["mimeType"]
         }
-    else:
-        raise Exception(f"Error {response.status_code}: {response.text}")
+        for a in issue.get("attachments", [])
+    ]
+    return {
+        "id": issue.get("idReadable"),
+        "title": issue.get("summary"),
+        "description": issue.get("description"),
+        "attachments": attachments
+    }
 
 # Example usage
 if __name__ == "__main__":
-    issue_id = "CEL-1234"  # replace with issue ID given by user
-    details = get_issue_details(issue_id)
-    print(f"Issue {details['id']}: {details['title']}\n\n{details['description']}")
+    issue_id = "SXM-470"  # replace with a real issue ID given by user
+    details = get_issue_with_attachments(issue_id)
+    print(f"Issue {details['id']}: {details['title']}\n")
+    print(details['description'])
+    if details["attachments"]:
+        print("\nAttachments:")
+        for att in details["attachments"]:
+            print(f"- {att['name']} ({att['mimeType']}): {BASE_URL}{att['url']}")
