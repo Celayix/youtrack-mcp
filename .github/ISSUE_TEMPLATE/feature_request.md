@@ -24,7 +24,7 @@ A clear and concise description of any alternative solutions or features you've 
 **Proposed Tool Details**
 If you're suggesting a new MCP tool:
 
-- **Tool Name:** `suggested_tool_name`
+- **Tool Name:** `suggested_tool_name` <!-- Replace with your proposed tool name -->
 - **Purpose:** What would this tool do?
 - **Parameters:** What inputs would it need?
 - **Output:** What would it return?
@@ -40,9 +40,9 @@ suggested_tool_name({
 **Use Case Examples**
 Provide specific examples of how this feature would be used:
 
-1. **Scenario 1:** [Description]
-2. **Scenario 2:** [Description]
-3. **Scenario 3:** [Description]
+1. **Scenario 1:** <!-- Example: As a project manager, I want to bulk assign issues to sprints -->
+2. **Scenario 2:** <!-- Example: As a developer, I want to automatically create issues from failed tests -->
+3. **Scenario 3:** <!-- Example: As a QA team, I want to link test cases to specific issues -->
 
 **Impact Assessment**
 - **Who would benefit:** [e.g. Project managers, Developers, QA teams]
@@ -59,3 +59,5 @@ Add any other context, screenshots, mockups, or examples about the feature reque
 
 **Related Issues**
 Link any related issues or discussions:
+- #issue_number
+- Related PR: #pr_number
