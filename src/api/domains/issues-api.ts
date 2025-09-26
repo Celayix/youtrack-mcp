@@ -184,23 +184,53 @@ export class IssuesAPIClient extends BaseAPIClient {
    */
   async queryIssues(params: IssueQueryParams): Promise<MCPResponse> {
     const endpoint = `/api/issues`;
-    
+
     const queryParams = {
       query: params.query,
       fields: params.fields || 'id,summary,description,state,priority,reporter,assignee,created,updated',
       $top: params.limit || 50,
       $skip: params.skip || 0
     };
-    
+
     const response = await this.get(endpoint, queryParams);
     const issues = response.data || [];
-    
+
     return ResponseFormatter.formatList(issues, 'issue', {
       totalCount: issues.length,
       filters: { query: params.query }
     });
   }
-  
+
+  /**
+   * Search issues with a lightweight projection suitable for MCP search tool
+   */
+  async searchIssuesByQuery(
+    query: string,
+    options: { limit?: number; fields?: string } = {}
+  ): Promise<MCPResponse> {
+    const endpoint = `/api/issues`;
+
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const response = await this.get(endpoint, {
+      query,
+      fields: options.fields || 'id,idReadable,summary,description,project(shortName)',
+      $top: limit,
+      $skip: 0
+    });
+
+    const issues = (response.data || []).map((issue: any) => ({
+      id: issue.idReadable || issue.id,
+      title: issue.summary,
+      description: issue.description || '',
+      project: issue.project?.shortName || undefined
+    }));
+
+    return ResponseFormatter.formatList(issues, 'issue', {
+      totalCount: issues.length,
+      filters: { query, limit }
+    });
+  }
+
   /**
    * Get issue comments
    */
@@ -561,11 +591,31 @@ export class IssuesAPIClient extends BaseAPIClient {
    * Smart search issues with advanced filtering
    */
   async smartSearchIssues(searchQuery: string, options: { projectId?: string } = {}): Promise<MCPResponse> {
-    const query = options.projectId 
-      ? `project: ${options.projectId} ${searchQuery}` 
+    const query = options.projectId
+      ? `project: ${options.projectId} ${searchQuery}`
       : searchQuery;
-    
+
     return this.queryIssues({ query });
+  }
+
+  /**
+   * Fetch concise issue details for MCP fetch tool
+   */
+  async fetchIssueDetails(issueId: string): Promise<MCPResponse> {
+    const endpoint = `/api/issues/${issueId}`;
+    const response = await this.get(endpoint, {
+      fields: 'id,idReadable,summary,description,project(shortName)'
+    });
+
+    const issue = response.data || {};
+    const formatted = {
+      id: issue.idReadable || issue.id || issueId,
+      title: issue.summary || 'Untitled issue',
+      description: issue.description || '',
+      project: issue.project?.shortName || undefined
+    };
+
+    return ResponseFormatter.formatSuccess(formatted, `Retrieved issue ${formatted.id}`);
   }
 
   /**

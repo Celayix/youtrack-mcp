@@ -144,6 +144,43 @@ const toolDefinitions = [
     }
   },
 
+  // LIGHTWEIGHT ISSUE SEARCH TOOL
+  {
+    name: 'search',
+    description: 'Search YouTrack issues by query and return concise results (id, title, description)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Full-text search query, e.g., "state: Open #bug" or "assignee: me priority: High"'
+        },
+        limit: {
+          type: 'integer',
+          description: 'Maximum number of issues to return (default 50, max 200)',
+          default: 50
+        }
+      },
+      required: ['query']
+    }
+  },
+
+  // ISSUE FETCH TOOL
+  {
+    name: 'fetch',
+    description: 'Fetch a single YouTrack issue with its title and description',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        issueId: {
+          type: 'string',
+          description: 'Issue ID, e.g., "PROJECT-123" or internal ID like "3-15"'
+        }
+      },
+      required: ['issueId']
+    }
+  },
+
     // COMMENT MANAGEMENT TOOLS
   {
     name: 'comments',
@@ -603,10 +640,16 @@ export class YouTrackMCPServer {
           
           case 'issues':
             return await this.handleIssuesManage(client, args);
-          
+
           case 'query':
             return await this.handleQueryIssues(client, args);
-          
+
+          case 'search':
+            return await this.handleSearchIssues(client, args);
+
+          case 'fetch':
+            return await this.handleFetchIssue(client, args);
+
           case 'comments':
             return await this.handleCommentsManage(client, args);
           
@@ -772,16 +815,68 @@ export class YouTrackMCPServer {
 
   private async handleQueryIssues(client: any, args: any) {
     const { query, fields, limit } = args;
-    return await client.issues.queryIssues({ 
-      query, 
+    return await client.issues.queryIssues({
+      query,
       fields: fields ? fields.split(',') : ['id', 'summary', 'description', 'state', 'priority', 'reporter', 'assignee'],
       limit: limit || 50
     });
   }
 
+  private async handleSearchIssues(client: any, args: any) {
+    const { query, limit } = args;
+
+    try {
+      ParameterValidator.validateRequired(query, 'query');
+    } catch (error) {
+      logger.error('Search parameter validation failed', {
+        query,
+        error: error instanceof Error ? error.message : error
+      });
+      if (error instanceof ValidationError) {
+        throw ParameterValidator.toMcpError(error);
+      }
+      throw error;
+    }
+
+    let validatedLimit: number | undefined;
+    try {
+      validatedLimit = ParameterValidator.validateInteger(limit, 'limit', { min: 1, max: 200 });
+    } catch (error) {
+      logger.error('Search limit validation failed', {
+        limit,
+        error: error instanceof Error ? error.message : error
+      });
+      if (error instanceof ValidationError) {
+        throw ParameterValidator.toMcpError(error);
+      }
+      throw error;
+    }
+
+    return await client.issues.searchIssuesByQuery(query, { limit: validatedLimit });
+  }
+
+  private async handleFetchIssue(client: any, args: any) {
+    const { issueId } = args;
+
+    try {
+      ParameterValidator.validateIssueId(issueId, 'issueId');
+    } catch (error) {
+      logger.error('Fetch parameter validation failed', {
+        issueId,
+        error: error instanceof Error ? error.message : error
+      });
+      if (error instanceof ValidationError) {
+        throw ParameterValidator.toMcpError(error);
+      }
+      throw error;
+    }
+
+    return await client.issues.fetchIssueDetails(issueId);
+  }
+
   private async handleCommentsManage(client: any, args: any) {
     const { action, issueId, commentId, text } = args;
-    
+
     // Validate parameters
     try {
       ParameterValidator.validateIssueId(issueId, 'issueId');
