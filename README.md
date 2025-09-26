@@ -46,6 +46,10 @@ npm install
 npm run build
 ```
 
+## Maintenance
+
+- 2025-09-25: Updated HTTP stack dependencies (Express 4.19.2, Axios 1.12.x, axios-retry 4.5.x) to incorporate vendor security patches.
+
 ## Configuration
 
 Copy the example environment file and configure it with your YouTrack instance details:
