@@ -90,6 +90,20 @@ CACHE_TTL=300000
 CACHE_ENABLED=true
 ```
 
+### Credential storage and security
+
+The server caches authentication details in the file `~/.youtrack-mcp-auth.json` so it can reuse access tokens between runs. The
+file is created with owner-only permissions (`0600`) and is ignored if the permissions are broadened. This prevents other users
+on the same machine from reading the stored credentials.
+
+To keep the cache secure:
+
+- Run the MCP server under an account that you trust with the YouTrack credentials.
+- Ensure your home directory permissions prevent other users from accessing the file path above.
+- If you need to rotate or remove credentials, delete the file or run the **Sign out** action to clear the cache.
+- Advanced operators can override the cache location by setting the optional `authStoragePath` configuration property if they
+  prefer to store credentials in a different secure directory.
+
 ## Usage
 
 ### Starting the Server
