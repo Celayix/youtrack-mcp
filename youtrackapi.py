@@ -1,17 +1,18 @@
 import os
+import sys
 import requests
 
 BASE_URL = "https://celayix.myjetbrains.com/youtrack/api/issues"
 
-headers = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Accept": "application/json"
-}
-
-def get_issue_with_attachments(issue_id: str):
+def get_issue_with_attachments(issue_id: str, token: str):
     """
     Fetch issue title, description, and attachments.
     """
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json"
+    }
+
     url = f"{BASE_URL}/{issue_id}"
     params = {
         "fields": "idReadable,summary,description,attachments(name,url,mimeType)"
@@ -28,16 +29,16 @@ def get_issue_with_attachments(issue_id: str):
         "title": issue.get("summary"),
         "description": issue.get("description"),
         "attachments": attachments
-    }
+    }, headers
 
-def download_attachment(attachment, save_dir="downloads"):
+
+def download_attachment(attachment, headers, save_dir="downloads"):
     """
     Download a single attachment to a local folder.
     """
     os.makedirs(save_dir, exist_ok=True)
     file_path = os.path.join(save_dir, attachment["name"])
 
-    # Download with the same authorization header
     resp = requests.get(attachment["url"], headers=headers, stream=True)
     if resp.status_code == 200:
         with open(file_path, "wb") as f:
@@ -47,9 +48,16 @@ def download_attachment(attachment, save_dir="downloads"):
     else:
         print(f"❌ Failed to download {attachment['name']}: {resp.status_code}")
 
+
 if __name__ == "__main__":
-    issue_id = "CEL-1234"  # replace with a real issue ID
-    details = get_issue_with_attachments(issue_id)
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <ISSUE_ID> <TOKEN>")
+        sys.exit(1)
+
+    issue_id = sys.argv[1]
+    token = sys.argv[2]
+
+    details, headers = get_issue_with_attachments(issue_id, token)
 
     print(f"Issue {details['id']}: {details['title']}\n")
     print(details['description'])
@@ -58,6 +66,6 @@ if __name__ == "__main__":
         print("\nAttachments found:")
         for att in details["attachments"]:
             print(f"- {att['name']} ({att['mimeType']})")
-            download_attachment(att)
+            download_attachment(att, headers)
     else:
         print("\nNo attachments found.")
