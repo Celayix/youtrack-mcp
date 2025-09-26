@@ -1,6 +1,14 @@
 import { logger } from '../logger.js';
 import { OAuth2Manager, OAuth2Config, AuthTokens } from './oauth2-manager.js';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import {
+  closeSync,
+  existsSync,
+  fchmodSync,
+  openSync,
+  readFileSync,
+  statSync,
+  writeFileSync
+} from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
@@ -21,6 +29,8 @@ export interface AuthConfig {
   // Authentication preferences
   preferOAuth2?: boolean;
   autoRefresh?: boolean;
+  // Optional override for authentication cache location (primarily for testing)
+  authStoragePath?: string;
 }
 
 /**
@@ -48,7 +58,7 @@ export class AuthenticationManager {
 
   constructor(config: AuthConfig) {
     this.config = config;
-    this.authFile = join(homedir(), '.youtrack-mcp-auth.json');
+    this.authFile = config.authStoragePath || join(homedir(), '.youtrack-mcp-auth.json');
     
     // Initialize OAuth2 manager if configured
     if (this.config.oauth2 || this.config.preferOAuth2) {
@@ -220,8 +230,13 @@ export class AuthenticationManager {
   private loadStoredAuth(): void {
     try {
       if (existsSync(this.authFile)) {
+        if (!this.ensureAuthFileSecure()) {
+          this.currentAuth = null;
+          logger.warn('Stored authentication file has insecure permissions and will be ignored.');
+          return;
+        }
         const authData = JSON.parse(readFileSync(this.authFile, 'utf8'));
-        
+
         // Validate stored authentication
         if (authData.baseUrl === this.config.baseUrl) {
           this.currentAuth = authData;
@@ -243,8 +258,8 @@ export class AuthenticationManager {
   private saveStoredAuth(): void {
     try {
       if (this.currentAuth) {
-        writeFileSync(this.authFile, JSON.stringify(this.currentAuth, null, 2));
-  logger.debug('Saved authentication to file');
+        this.writeSecureAuthFile(JSON.stringify(this.currentAuth, null, 2));
+        logger.debug('Saved authentication to file');
       }
     } catch (error) {
       logger.warn('Failed to save authentication', error);
@@ -257,10 +272,47 @@ export class AuthenticationManager {
   private clearStoredAuth(): void {
     try {
       if (existsSync(this.authFile)) {
-        writeFileSync(this.authFile, '{}');
+        this.writeSecureAuthFile('{}');
       }
     } catch (error) {
       logger.warn('Failed to clear stored authentication', error);
+    }
+  }
+
+  /**
+   * Ensure the auth file exists with secure permissions.
+   * @returns true if the file has secure permissions, false otherwise.
+   */
+  private ensureAuthFileSecure(): boolean {
+    try {
+      const stats = statSync(this.authFile);
+      const mode = stats.mode & 0o777;
+
+      if ((mode & 0o077) !== 0) {
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      logger.warn('Unable to verify authentication file permissions', error);
+      return false;
+    }
+  }
+
+  /**
+   * Write authentication data using owner-only permissions.
+   */
+  private writeSecureAuthFile(contents: string): void {
+    let fileDescriptor: number | null = null;
+
+    try {
+      fileDescriptor = openSync(this.authFile, 'w', 0o600);
+      fchmodSync(fileDescriptor, 0o600);
+      writeFileSync(fileDescriptor, contents, { encoding: 'utf8' });
+    } finally {
+      if (fileDescriptor !== null) {
+        closeSync(fileDescriptor);
+      }
     }
   }
 

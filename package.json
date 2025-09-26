@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "start:remote": "node dist/remote.js",
     "test": "npx tsx scripts/test-queries.ts",
-    "test:jest": "jest",
+    "test:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
     "test:watch": "jest --watch",
     "test:queries": "npx tsx scripts/test-queries.ts",
     "test:enterprise": "npx tsx scripts/test-enterprise-features.ts",
