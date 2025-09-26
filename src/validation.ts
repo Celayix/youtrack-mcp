@@ -116,6 +116,40 @@ export class ParameterValidator {
   }
 
   /**
+   * Validate integer parameter with optional bounds
+   */
+  static validateInteger(
+    value: unknown,
+    fieldName: string,
+    options: { min?: number; max?: number } = {}
+  ): number | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed)) {
+      throw new ValidationError(`${fieldName} must be an integer`, fieldName);
+    }
+
+    if (options.min !== undefined && parsed < options.min) {
+      throw new ValidationError(
+        `${fieldName} must be greater than or equal to ${options.min}`,
+        fieldName
+      );
+    }
+
+    if (options.max !== undefined && parsed > options.max) {
+      throw new ValidationError(
+        `${fieldName} must be less than or equal to ${options.max}`,
+        fieldName
+      );
+    }
+
+    return parsed;
+  }
+
+  /**
    * Validate time duration format (e.g., "2h", "30m", "1d")
    */
   static validateDuration(duration: string | undefined, fieldName = 'duration'): string | undefined {
@@ -228,7 +262,7 @@ export function suggestToolName(unknownTool: string): string {
   }
 
   // Find similar tool names
-  const availableTools = ['projects', 'issues', 'query', 'comments', 'agile_boards', 'knowledge_base', 'analytics', 'admin', 'time_tracking'];
+  const availableTools = ['projects', 'issues', 'query', 'search', 'fetch', 'comments', 'agile_boards', 'knowledge_base', 'analytics', 'admin', 'time_tracking', 'auth', 'notifications', 'subscriptions'];
   const similar = availableTools.find(tool => 
     tool.includes(unknownTool.toLowerCase()) || 
     unknownTool.toLowerCase().includes(tool)
